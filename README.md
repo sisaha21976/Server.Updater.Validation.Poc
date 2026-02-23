@@ -7,4 +7,6 @@
 Once the app has executed, it should print some metrics in the Console. Something like this:
 <img width="653" height="209" alt="image" src="https://github.com/user-attachments/assets/52d89c6c-00c6-4725-b18a-d646f8024e5f" />
 
-## For failing validation try deleting or tampering with one of the staged files
+## For failing validation try deleting or tampering with one of the staged files( Comment out the execute part on first run, then vice versa)
+<img width="647" height="61" alt="image" src="https://github.com/user-attachments/assets/a262f4fd-9cb6-447d-887b-3a849be15472" />
+
