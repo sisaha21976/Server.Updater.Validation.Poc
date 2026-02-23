@@ -48,6 +48,8 @@ internal class ExecuteUpdateService
 
     /// <summary>
     /// Executes the update with separate validation and copy phases (for comparison).
+    /// This is where validation is done for all files first, and if successful, proceeds to copy all files.
+    /// This allows us to compare the performance and failure modes of separate phases vs. single pass.
     /// </summary>
     public void ExecuteSeparatePhases()
     {
