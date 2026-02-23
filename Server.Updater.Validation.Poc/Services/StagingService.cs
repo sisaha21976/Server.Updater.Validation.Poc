@@ -8,13 +8,13 @@ internal class StagingService
     private static readonly HashSet<string> _filesToIgnore = ["[Content_Types].xml", ".signature.p7s"];
     private static readonly HashSet<string> _fileExtensionsToIgnore = [".nuspec"];
 
-    private readonly string _nupkgFilePath;
     private readonly string _applicationName;
+    private readonly string _nupkgFilePath;
 
-    public StagingService(string nupkgFilePath)
+    public StagingService(string applicationName)
     {
-        _nupkgFilePath = nupkgFilePath;
-        _applicationName = Path.GetFileNameWithoutExtension(nupkgFilePath);
+        _applicationName = applicationName;
+        _nupkgFilePath = UpdaterConstants.GetNupkgFilePath(applicationName);
     }
 
     public void Run()

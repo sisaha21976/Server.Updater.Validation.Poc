@@ -1,14 +1,21 @@
-﻿using Server.Updater.Validation.Poc.Services;
+﻿using Server.Updater.Validation.Poc;
+using Server.Updater.Validation.Poc.Services;
 
-// Configuration
-const string nupkgFilePath = @"C:\tmp\poc\AppServer-64.25.1.17.1000.nupkg";
-var applicationName = Path.GetFileNameWithoutExtension(nupkgFilePath);
+// Application name is configured in UpdaterConstants.ApplicationName
+// The nupkg file is expected at: {CacheDirectory}/{ApplicationName}.nupkg
+var applicationName = UpdaterConstants.ApplicationName;
+
+Console.WriteLine($"Application: {applicationName}");
+Console.WriteLine($"Nupkg path:  {UpdaterConstants.GetNupkgFilePath(applicationName)}");
+Console.WriteLine($"Stage path:  {UpdaterConstants.GetStagedPackageDirectory(applicationName)}");
+Console.WriteLine($"Install path: {UpdaterConstants.GetInstallDirectory(applicationName)}");
+Console.WriteLine();
 
 try
 {
     // Stage the package (extracts .nupkg and creates manifest)
     Console.WriteLine("=== STAGING PHASE ===");
-    var stagingService = new StagingService(nupkgFilePath);
+    var stagingService = new StagingService(applicationName);
     stagingService.Run();
 
     // Execute the update (validates staged files and copies to install directory)
