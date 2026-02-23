@@ -51,6 +51,7 @@ internal class ExecuteUpdateService
     /// This is where validation is done for all files first, and if successful, proceeds to copy all files.
     /// This allows us to compare the performance and failure modes of separate phases vs. single pass.
     /// </summary>
+    [Obsolete("This method is for comparison purposes only. Use Execute() for the recommended single pass approach.")]
     public void ExecuteSeparatePhases()
     {
         _metricsService.StartTotal();
