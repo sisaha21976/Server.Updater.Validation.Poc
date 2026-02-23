@@ -24,7 +24,7 @@ try
     Console.WriteLine("=== EXECUTE PHASE ===");
     var executeService = new ExecuteUpdateService(applicationName);
     executeService.Execute();
-    Console.WriteLine("=== EXECUTE FINISHED ===")
+    Console.WriteLine("=== EXECUTE FINISHED ===");
 }
 catch (StagedArtifactValidationException ex)
 {
