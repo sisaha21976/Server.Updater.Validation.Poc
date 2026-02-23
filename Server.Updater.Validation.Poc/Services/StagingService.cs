@@ -4,101 +4,71 @@ using System.IO.Compression;
 
 internal class StagingService
 {
-    // Same filters as PackageRepository
     private static readonly HashSet<string> _foldersToIgnore = ["_rels"];
     private static readonly HashSet<string> _filesToIgnore = ["[Content_Types].xml", ".signature.p7s"];
     private static readonly HashSet<string> _fileExtensionsToIgnore = [".nuspec"];
 
-    private const string NupkgFilePath = @"C:\tmp\poc\AppServer-64.25.1.17.1000.nupkg";
-    private const string StagingDirectory = @"C:\tmp\poc\staging";
+    private readonly string _nupkgFilePath;
+    private readonly string _applicationName;
 
-    public StagingService()
+    public StagingService(string nupkgFilePath)
     {
-        Run();
+        _nupkgFilePath = nupkgFilePath;
+        _applicationName = Path.GetFileNameWithoutExtension(nupkgFilePath);
     }
 
-    private void Run()
+    public void Run()
     {
         ValidatePaths();
-        InstallPackage();
-        Console.WriteLine($"Package staged successfully at: {GetDestinationDirectory()}");
+        ExtractPackage();
+
+        var validateService = new ValidateService();
+        validateService.CreateManifest(_applicationName);
+
+        Console.WriteLine($"Package staged successfully at: {UpdaterConstants.GetStagedPackageDirectory(_applicationName)}");
     }
 
     private void ValidatePaths()
     {
-        if (!File.Exists(NupkgFilePath))
+        if (!File.Exists(_nupkgFilePath))
         {
-            throw new FileNotFoundException($"Nupkg file not found: {NupkgFilePath}");
+            throw new FileNotFoundException($"Nupkg file not found: {_nupkgFilePath}");
         }
 
-        if (!Directory.Exists(StagingDirectory))
-        {
-            Directory.CreateDirectory(StagingDirectory);
-        }
+        FileUtilities.EnsureDirectoryExists(UpdaterConstants.StagingDirectory);
     }
 
-    private string GetDestinationDirectory()
+    private void ExtractPackage()
     {
-        return Path.Combine(StagingDirectory, Path.GetFileNameWithoutExtension(NupkgFilePath));
-    }
+        string destinationDirectory = UpdaterConstants.GetStagedPackageDirectory(_applicationName);
+        FileUtilities.CleanDirectory(destinationDirectory);
 
-    private void InstallPackage()
-    {
-        string destinationDirectory = GetDestinationDirectory();
-
-        // Clean up existing staged package
-        if (Directory.Exists(destinationDirectory))
-        {
-            Directory.Delete(destinationDirectory, recursive: true);
-        }
-
-        // Open nupkg as ZipArchive (same as PackageRepository)
-        using Stream stream = File.Open(NupkgFilePath, FileMode.Open, FileAccess.Read);
-        using ZipArchive archive = new ZipArchive(stream, ZipArchiveMode.Read);
+        using Stream stream = File.Open(_nupkgFilePath, FileMode.Open, FileAccess.Read);
+        using ZipArchive archive = new(stream, ZipArchiveMode.Read);
 
         foreach (ZipArchiveEntry entry in archive.Entries)
         {
-            // Skip directory entries
             if (string.IsNullOrEmpty(entry.Name))
             {
                 continue;
             }
 
-            string fullPath = GetFullPath(entry.FullName, destinationDirectory);
+            string fullPath = FileUtilities.GetSafeFullPath(entry.FullName, destinationDirectory);
 
-            // Apply same filters as PackageRepository
             if (!_foldersToIgnore.Contains(Directory.GetParent(fullPath)?.Name!) &&
                 !_filesToIgnore.Contains(entry.Name) &&
                 !_fileExtensionsToIgnore.Contains(Path.GetExtension(entry.Name)))
             {
-                // Create directory structure
                 string? directoryPath = Path.GetDirectoryName(fullPath);
                 if (!string.IsNullOrEmpty(directoryPath))
                 {
-                    Directory.CreateDirectory(directoryPath);
+                    FileUtilities.EnsureDirectoryExists(directoryPath);
                 }
 
-                // Extract file
                 using Stream sourceStream = entry.Open();
                 using Stream destinationStream = File.Create(fullPath);
                 sourceStream.CopyTo(destinationStream);
             }
         }
-    }
-
-    // Same as ZipUtilities.GetFullPath
-    private static string GetFullPath(string entryFullName, string rootPath)
-    {
-        string fileName = Path.Combine(rootPath, entryFullName);
-        string fullPath = Path.GetFullPath(fileName);
-
-        // Zip slip vulnerability check
-        if (!fullPath.StartsWith(rootPath, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException(
-                $"Attempt to extract file outside target directory: {fullPath}");
-        }
-
-        return fullPath;
     }
 }
