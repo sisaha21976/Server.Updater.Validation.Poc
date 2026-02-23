@@ -13,16 +13,18 @@ Console.WriteLine();
 
 try
 {
-    // Stage the package (extracts .nupkg and creates manifest)
+    // Comment out each part if wanted to run separately
+
     Console.WriteLine("=== STAGING PHASE ===");
     var stagingService = new StagingService(applicationName);
     stagingService.Run();
+    Console.WriteLine("=== STAGING FINISHED ===");
 
-    // Execute the update (validates staged files and copies to install directory)
     Console.WriteLine();
     Console.WriteLine("=== EXECUTE PHASE ===");
     var executeService = new ExecuteUpdateService(applicationName);
     executeService.Execute();
+    Console.WriteLine("=== EXECUTE FINISHED ===")
 }
 catch (StagedArtifactValidationException ex)
 {
