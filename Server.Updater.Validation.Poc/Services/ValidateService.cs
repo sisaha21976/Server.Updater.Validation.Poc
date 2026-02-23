@@ -86,6 +86,67 @@ internal class ValidateService
         return manifest;
     }
 
+    /// <summary>
+    /// Loads the manifest and validates file count (structural validation).
+    /// Use this before iterating files with ValidateFile for single-pass validation.
+    /// </summary>
+    /// <param name="applicationName">The application name (package directory name).</param>
+    /// <returns>The manifest with file count validated.</returns>
+    /// <exception cref="StagedArtifactValidationException">Thrown when validation fails.</exception>
+    public PackageManifest LoadAndValidateStructure(string applicationName)
+    {
+        var stagedDirectory = UpdaterConstants.GetStagedPackageDirectory(applicationName);
+        var manifestPath = UpdaterConstants.GetManifestPath(applicationName);
+
+        // Load manifest
+        var manifest = LoadAndValidateManifest(manifestPath);
+
+        // Level 1: Structural validation - check file count matches
+        ValidateFileCount(stagedDirectory, manifest);
+
+        return manifest;
+    }
+
+    /// <summary>
+    /// Validates a single file against its manifest entry.
+    /// Checks existence, size, and SHA256 hash.
+    /// </summary>
+    /// <param name="filePath">Full path to the file to validate.</param>
+    /// <param name="entry">The manifest entry to validate against.</param>
+    /// <exception cref="StagedArtifactValidationException">Thrown when validation fails.</exception>
+    public void ValidateFile(string filePath, ManifestEntry entry)
+    {
+        // Check file exists
+        if (!File.Exists(filePath))
+        {
+            throw new StagedArtifactValidationException(filePath, ValidationFailureReason.FileMissing);
+        }
+
+        var fileInfo = new FileInfo(filePath);
+
+        // Check size matches (Level 1 - structural)
+        if (fileInfo.Length != entry.SizeBytes)
+        {
+            throw new StagedArtifactValidationException(filePath, ValidationFailureReason.SizeMismatch);
+        }
+
+        // Check hash matches (Level 2 - content integrity)
+        var actualHash = FileUtilities.ComputeSha256Hash(filePath);
+        if (!string.Equals(actualHash, entry.Sha256, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new StagedArtifactValidationException(filePath, ValidationFailureReason.HashMismatch);
+        }
+    }
+
+    /// <summary>
+    /// Loads and validates the manifest from the staged directory.
+    /// </summary>
+    public PackageManifest LoadManifest(string applicationName)
+    {
+        var manifestPath = UpdaterConstants.GetManifestPath(applicationName);
+        return LoadAndValidateManifest(manifestPath);
+    }
+
     private static PackageManifest LoadAndValidateManifest(string manifestPath)
     {
         if (!File.Exists(manifestPath))
@@ -115,30 +176,6 @@ internal class ValidateService
             throw new StagedArtifactValidationException(
                 stagedDirectory,
                 ValidationFailureReason.FileCountMismatch);
-        }
-    }
-
-    private static void ValidateFile(string filePath, ManifestEntry entry)
-    {
-        // Check file exists
-        if (!File.Exists(filePath))
-        {
-            throw new StagedArtifactValidationException(filePath, ValidationFailureReason.FileMissing);
-        }
-
-        var fileInfo = new FileInfo(filePath);
-
-        // Check size matches (Level 1 - structural)
-        if (fileInfo.Length != entry.SizeBytes)
-        {
-            throw new StagedArtifactValidationException(filePath, ValidationFailureReason.SizeMismatch);
-        }
-
-        // Check hash matches (Level 2 - content integrity)
-        var actualHash = FileUtilities.ComputeSha256Hash(filePath);
-        if (!string.Equals(actualHash, entry.Sha256, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new StagedArtifactValidationException(filePath, ValidationFailureReason.HashMismatch);
         }
     }
 }

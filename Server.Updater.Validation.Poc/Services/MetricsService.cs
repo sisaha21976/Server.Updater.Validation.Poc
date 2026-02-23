@@ -141,7 +141,9 @@ internal class MetricsService
 
     private void PrintValidationOverhead()
     {
-        if (!_operations.TryGetValue("Validation", out var validationMetrics))
+        // Only show overhead analysis when validation and copy are separate operations
+        if (!_operations.TryGetValue("Validation", out var validationMetrics) ||
+            !_operations.TryGetValue("File Copy", out _))
         {
             return;
         }

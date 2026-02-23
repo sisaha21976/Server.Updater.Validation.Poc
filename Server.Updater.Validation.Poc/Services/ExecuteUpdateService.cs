@@ -22,9 +22,34 @@ internal class ExecuteUpdateService
     }
 
     /// <summary>
-    /// Executes the update by validating staged files and copying them to the install directory.
+    /// Executes the update by validating each staged file and copying it immediately.
+    /// Single pass: validate -> copy for each file (fail fast on validation failure).
     /// </summary>
     public void Execute()
+    {
+        _metricsService.StartTotal();
+
+        Console.WriteLine($"Starting update execution for: {_applicationName}");
+
+        var fileCount = GetFileCount();
+        var totalBytes = GetTotalBytes();
+
+        // Single pass: Validate each file then copy it immediately
+        _metricsService.MeasureWithFileCount(
+            "Validate + Copy",
+            fileCount,
+            totalBytes,
+            () => ValidateAndCopyFiles());
+
+        Console.WriteLine($"Update executed successfully. Files installed at: {_installTargetDirectory}");
+
+        _metricsService.PrintMetrics();
+    }
+
+    /// <summary>
+    /// Executes the update with separate validation and copy phases (for comparison).
+    /// </summary>
+    public void ExecuteSeparatePhases()
     {
         _metricsService.StartTotal();
 
@@ -47,6 +72,32 @@ internal class ExecuteUpdateService
         Console.WriteLine($"Update executed successfully. Files installed at: {_installTargetDirectory}");
 
         _metricsService.PrintMetrics();
+    }
+
+    private void ValidateAndCopyFiles()
+    {
+        Console.WriteLine($"Validating and copying staged files for: {_applicationName}");
+
+        // Load manifest and validate file count (structural validation)
+        var manifest = _validateService.LoadAndValidateStructure(_applicationName);
+
+        // Prepare install directory
+        FileUtilities.CleanDirectory(_installTargetDirectory);
+
+        // Single pass: Validate each file then immediately copy it
+        foreach (var entry in manifest.Files)
+        {
+            var sourcePath = Path.Combine(_stagedPackageDirectory, entry.RelativePath);
+            var destinationPath = Path.Combine(_installTargetDirectory, entry.RelativePath);
+
+            // Validate file (size + hash) - throws on failure
+            _validateService.ValidateFile(sourcePath, entry);
+
+            // Copy immediately after successful validation
+            FileUtilities.CopyFileWithDirectory(sourcePath, destinationPath);
+        }
+
+        Console.WriteLine($"All {manifest.FileCount} files validated and copied successfully.");
     }
 
     private int GetFileCount()
